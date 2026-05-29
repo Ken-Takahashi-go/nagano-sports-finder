@@ -34,6 +34,7 @@ load_dotenv(SCRIPT_DIR / ".env")
 # stage2i のロジックを再利用するためインポート
 from stage2i_scrape_one_facility import (
     BASE_URL, SETTING_ID, INTERVAL, USER_AGENT, SCRAPER_VERSION,
+    SUPABASE_URL, SUPABASE_KEY,
     AggregatedSlot, Room, Slot,
     aggregate, fetch_events, fetch_room_list, parse_event_to_slot,
     supa_get, supa_insert, supa_patch, supa_upsert,
