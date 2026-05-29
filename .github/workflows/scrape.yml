@@ -1,0 +1,61 @@
+name: Daily Scrape Availability
+
+# 実行トリガー
+on:
+  schedule:
+    # 毎日 JST 02:30 (UTC 17:30) に実行
+    # 自治体システムが空いている深夜帯
+    - cron: '30 17 * * *'
+  # GitHub Actions タブから手動実行も可能
+  workflow_dispatch:
+    inputs:
+      days:
+        description: '取得日数'
+        required: false
+        default: '14'
+        type: string
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60  # 全27施設で約40分。余裕持って60分
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: 'scraper/requirements-actions.txt'
+
+      - name: Install dependencies (GitHub Actions用の軽量セット)
+        working-directory: ./scraper
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-actions.txt
+
+      - name: Run full scrape (all facilities)
+        working-directory: ./scraper
+        env:
+          # 公開設定
+          MACHIKAGI_BASE_URL: https://city.nagano.nagano.machikagi-remote.jp
+          SCRAPER_NAME: NaganoSportsFinder
+          SCRAPER_VERSION: '0.1.0'
+          REQUEST_INTERVAL_SECONDS: '15'
+
+          # GitHub Secrets から注入
+          SCRAPER_CONTACT: ${{ secrets.SCRAPER_CONTACT }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          DAYS=${{ inputs.days || '14' }}
+          echo "取得日数: $DAYS 日"
+          python stage2j_scrape_all_facilities.py --days $DAYS
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "::notice::スクレイプ完了 / 結果は Supabase の scraping_jobs テーブルで確認可"

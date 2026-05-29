@@ -1,5 +1,12 @@
 # 長野県公共施設ナビ — Scraper
 
+## 定期実行 (GitHub Actions)
+
+毎日 JST 02:30 に自動実行されます (`.github/workflows/scrape.yml`)。
+手動実行は GitHub の Actions タブ → "Daily Scrape Availability" → "Run workflow" から可能。
+
+
+
 長野市まちかぎリモートから空き状況等を取得するスクレイパー。
 
 ## ステージ
