@@ -36,7 +36,9 @@ export async function generateMetadata({
 
   const title = `${f.facility_name} - ${f.municipality}の${sportsLabel}施設`;
   const description = `${f.facility_name}（${f.municipality}${f.address ? '、' + f.address : ''}）の施設情報。${features.join(' / ')}${f.phone_number ? ` / TEL: ${f.phone_number}` : ''}。長野県公共施設ナビ。`;
-  const url = `https://nagano-sports-finder.example.com/facilities/${f.facility_code}`;
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
+  const url = `${siteUrl}/facilities/${f.facility_code}`;
 
   return {
     title,
@@ -262,7 +264,9 @@ function InfoRow({ label, value }: { label: string; value: string | null | undef
  */
 function StructuredData({ facility: f }: { facility: FacilityWithSports }) {
   const sportsLabel = f.sports.map((s) => SPORT_LABEL[s]);
-  const url = `https://nagano-sports-finder.example.com/facilities/${f.facility_code}`;
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
+  const url = `${siteUrl}/facilities/${f.facility_code}`;
 
   const jsonLd = {
     '@context': 'https://schema.org',

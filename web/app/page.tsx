@@ -25,18 +25,20 @@ export default async function HomePage() {
   ]);
 
   // Schema.org JSON-LD (WebSite + 検索アクション)
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: '長野県公共施設ナビ',
-    url: 'https://nagano-sports-finder.example.com',
+    url: siteUrl,
     description:
       '長野市の公共テニスコート・サッカー場・フットサル場を横断検索できるデータベース。',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: 'https://nagano-sports-finder.example.com/search?q={search_term_string}',
+        urlTemplate: `${siteUrl}/search?q={search_term_string}`,
       },
       'query-input': 'required name=search_term_string',
     },

@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { searchFacilities } from '@/lib/queries';
 
-const SITE_URL = 'https://nagano-sports-finder.example.com';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
 
 export const revalidate = 3600; // 1時間ごとにsitemapを再生成
 

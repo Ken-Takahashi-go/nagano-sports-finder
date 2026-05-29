@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
 
-const SITE_URL = 'https://nagano-sports-finder.example.com';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
 const SITE_NAME = '長野県公共施設ナビ';
 const DEFAULT_DESCRIPTION =
   '長野市の公共テニスコート・サッカー場・フットサル場を横断検索。ナイター・人工芝・屋内・無料施設で絞り込み可能。31施設・92面のデータベース。';
