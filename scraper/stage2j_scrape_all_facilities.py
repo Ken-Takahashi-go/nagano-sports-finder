@@ -140,6 +140,13 @@ def main() -> int:
         console.print(f"[yellow]DRY RUN モード[/yellow]")
     console.print()
 
+    # 環境変数サニティチェック (GitHub Actionsでの早期発見用)
+    console.print(f"[dim]USER_AGENT     = {repr(USER_AGENT)[:120]}[/dim]")
+    console.print(f"[dim]BASE_URL       = {BASE_URL!r}[/dim]")
+    console.print(f"[dim]SUPABASE_URL   = {'(set)' if (SUPABASE_URL or '').startswith('https://') else '(MISSING!)'}[/dim]")
+    console.print(f"[dim]SUPABASE_KEY   = {'(set)' if SUPABASE_KEY else '(MISSING!)'}[/dim]")
+    console.print()
+
     # 対象施設取得 (machikagi_facility_id が紐付いた全施設)
     facilities = supa_get("facilities", {
         "machikagi_facility_id": "not.is.null",

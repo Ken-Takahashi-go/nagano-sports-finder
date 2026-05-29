@@ -38,17 +38,26 @@ from rich.table import Table
 SCRIPT_DIR = Path(__file__).parent
 load_dotenv(SCRIPT_DIR / ".env")
 
+def _ascii_safe(s: str | None) -> str:
+    """HTTPヘッダー用にASCII safe化 (httpx は ヘッダーをasciiで送るため)"""
+    if s is None:
+        return ""
+    # BOM除去 + 前後空白除去 + 非ASCII除去
+    cleaned = str(s).replace("﻿", "").strip()
+    return cleaned.encode("ascii", errors="ignore").decode("ascii")
+
+
 # 設定
-BASE_URL = os.getenv("MACHIKAGI_BASE_URL", "https://city.nagano.nagano.machikagi-remote.jp")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-SCRAPER_NAME = os.getenv("SCRAPER_NAME", "NaganoSportsFinder")
-SCRAPER_VERSION = os.getenv("SCRAPER_VERSION", "0.1.0")
-SCRAPER_CONTACT = os.getenv("SCRAPER_CONTACT", "contact@example.com")
+BASE_URL = _ascii_safe(os.getenv("MACHIKAGI_BASE_URL", "https://city.nagano.nagano.machikagi-remote.jp"))
+SUPABASE_URL = _ascii_safe(os.getenv("SUPABASE_URL"))
+SUPABASE_KEY = _ascii_safe(os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+SCRAPER_NAME = _ascii_safe(os.getenv("SCRAPER_NAME", "NaganoSportsFinder"))
+SCRAPER_VERSION = _ascii_safe(os.getenv("SCRAPER_VERSION", "0.1.0"))
+SCRAPER_CONTACT = _ascii_safe(os.getenv("SCRAPER_CONTACT", "contact@example.com"))
 INTERVAL = int(os.getenv("REQUEST_INTERVAL_SECONDS", "15"))
 SETTING_ID = "84"  # 基本利用
 
-USER_AGENT = (
+USER_AGENT = _ascii_safe(
     f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     f"AppleWebKit/537.36 (KHTML, like Gecko) "
     f"Chrome/120.0.0.0 Safari/537.36 "
