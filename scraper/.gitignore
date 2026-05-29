@@ -1,0 +1,11 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+.env.local
+# scraper/outputs/ 配下は全て生成物なので除外 (.gitkeep のみ追跡)
+outputs/*
+!outputs/.gitkeep
+.pytest_cache/
+*.log

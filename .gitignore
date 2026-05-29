@@ -1,0 +1,45 @@
+# 環境変数（絶対にコミット禁止）
+.env
+.env.local
+.env.*.local
+
+# 利用規約PDFはローカル保存のみ（再配布リスク回避）
+docs/legal/*.pdf
+docs/legal/*.html
+
+# 一時抽出物
+_xlsx_extracted/
+_tmp.zip
+*.tmp
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Python (スクレイパー)
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# AI ツール (Claude Code 等のローカル状態)
+.claude/
+.cursor/
+
+# ログ
+*.log
+logs/
+
+# テスト/カバレッジ
+coverage/
+.nyc_output/

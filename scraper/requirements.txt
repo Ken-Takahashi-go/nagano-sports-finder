@@ -1,0 +1,21 @@
+# Phase 1 Week 2 PoC スクレイパー依存パッケージ
+# Python 3.12+ 推奨
+
+# HTTP クライアント (rate limit / retry に対応しやすい)
+httpx>=0.27.0,<1.0
+
+# HTML パーサー
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# 環境変数読み込み
+python-dotenv>=1.0.0
+
+# 出力整形
+rich>=13.0.0
+
+# ヘッドレスブラウザ (JS依存ページ用)
+playwright>=1.40.0
+
+# Phase 2 以降に追加候補 (今は不要)
+# rapidfuzz>=3.0.0    # 施設名のあいまい照合
