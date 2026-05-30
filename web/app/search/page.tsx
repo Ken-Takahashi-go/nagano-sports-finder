@@ -10,7 +10,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: '施設検索',
   description:
-    '長野市の公共スポーツ施設を条件で絞り込み検索。競技・サーフェス・ナイター可否・屋内/屋外・料金で絞り込めます。',
+    '長野県(長野市・松本市)の公共スポーツ施設を条件で絞り込み検索。競技・サーフェス・ナイター可否・屋内/屋外・料金・市町村で絞り込めます。',
   // 検索ページは無限のクエリの組み合わせがあるため、検索結果はnoindex推奨
   robots: { index: false, follow: true },
 };
@@ -21,6 +21,7 @@ type SearchParams = {
   lighting?: string;
   indoor?: string;
   free?: string;
+  municipality?: string;
   q?: string;
 };
 
@@ -35,6 +36,7 @@ export default async function SearchPage({
     lighting: searchParams.lighting === 'true' ? true : undefined,
     indoor: searchParams.indoor === 'true' ? true : undefined,
     free: searchParams.free === 'true' ? true : undefined,
+    municipality: searchParams.municipality || undefined,
     q: searchParams.q || undefined,
   };
 
@@ -43,6 +45,7 @@ export default async function SearchPage({
   // フィルタタグの表示用
   const activeFilters: string[] = [];
   if (filters.q) activeFilters.push(`「${filters.q}」を含む`);
+  if (filters.municipality) activeFilters.push(filters.municipality);
   if (filters.sport === 'tennis') activeFilters.push('テニス');
   if (filters.sport === 'soccer') activeFilters.push('サッカー');
   if (filters.sport === 'futsal') activeFilters.push('フットサル');
@@ -65,6 +68,7 @@ export default async function SearchPage({
             lighting: searchParams.lighting,
             indoor: searchParams.indoor,
             free: searchParams.free,
+            municipality: searchParams.municipality,
           }}
         />
       </div>
@@ -94,7 +98,14 @@ export default async function SearchPage({
       )}
 
       {/* クイックフィルタ */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 space-y-2">
+        {/* 市町村 */}
+        <div className="flex flex-wrap gap-2 text-sm items-center">
+          <span className="text-xs text-gray-500 mr-1">市町村:</span>
+          <FilterLink current={searchParams} param="municipality" value="長野市" label="長野市" />
+          <FilterLink current={searchParams} param="municipality" value="松本市" label="松本市" />
+        </div>
+        {/* 競技・属性 */}
         <div className="flex flex-wrap gap-2 text-sm">
           <FilterLink current={searchParams} param="sport" value="tennis" label="テニス" />
           <FilterLink current={searchParams} param="sport" value="soccer" label="サッカー" />

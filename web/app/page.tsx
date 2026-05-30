@@ -12,9 +12,9 @@ import {
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: '長野市の公共スポーツ施設を横断検索',
+  title: '長野県(長野市・松本市)の公共スポーツ施設を横断検索',
   description:
-    '長野市の公共テニスコート24施設・サッカー/フットサル7施設を横断検索。ナイター可能テニス6施設(計41面)、屋内施設、無料施設などで絞り込み。',
+    '長野市・松本市の公共テニスコート34施設・サッカー/フットサル系・体育館36施設を横断検索。ナイター可能テニス、屋内施設、無料施設、市町村などで絞り込み。',
 };
 
 export default async function HomePage() {
@@ -33,7 +33,7 @@ export default async function HomePage() {
     name: '長野県公共施設ナビ',
     url: siteUrl,
     description:
-      '長野市の公共テニスコート・サッカー場・フットサル場を横断検索できるデータベース。',
+      '長野県(長野市・松本市)の公共テニスコート・サッカー場・フットサル場・体育館を横断検索できるデータベース。',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
@@ -56,15 +56,15 @@ export default async function HomePage() {
           長野県の公共スポーツ施設を<br />横断検索
         </h1>
         <p className="text-brand-50 mb-2 text-sm md:text-base">
-          テニス・サッカー・フットサルの空き状況を、ひとつのサイトで比較
+          テニス・サッカー・フットサル・体育館の空き状況を、ひとつのサイトで比較
         </p>
         <p className="text-brand-100 text-xs md:text-sm mb-6">
-          ※現在対応地域：長野市 ／ 他市は随時追加
+          ※現在対応地域：長野市・松本市 ／ 他市は随時追加
         </p>
 
         {/* 検索ボックス */}
         <div className="max-w-xl mb-5">
-          <SearchBox size="large" placeholder="施設名で検索 (例: 城山、南長野)" />
+          <SearchBox size="large" placeholder="施設名で検索 (例: 城山、南長野、エア・ウォーター、波田扇子田)" />
         </div>
 
         {/* 競技別クイック導線 */}
@@ -86,6 +86,22 @@ export default async function HomePage() {
             className="inline-flex items-center gap-2 bg-white text-brand-700 px-5 py-2.5 rounded-lg font-bold shadow hover:bg-brand-50 transition"
           >
             🥅 フットサル
+          </Link>
+        </div>
+
+        {/* 市町村別クイック導線 */}
+        <div className="flex flex-wrap gap-3 mt-3">
+          <Link
+            href="/search?municipality=長野市"
+            className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
+          >
+            📍 長野市の施設
+          </Link>
+          <Link
+            href="/search?municipality=松本市"
+            className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
+          >
+            📍 松本市の施設
           </Link>
         </div>
       </section>

@@ -5,7 +5,7 @@ import './globals.css';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
 const SITE_NAME = '長野県公共施設ナビ';
 const DEFAULT_DESCRIPTION =
-  '長野市の公共テニスコート・サッカー場・フットサル場を横断検索。ナイター・人工芝・屋内・無料施設で絞り込み可能。31施設・92面のデータベース。';
+  '長野市・松本市の公共テニスコート・サッカー場・フットサル場・体育館を横断検索。ナイター・人工芝・屋内・無料施設・市町村で絞り込み可能。80施設のデータベース。';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -15,8 +15,8 @@ export const metadata: Metadata = {
   },
   description: DEFAULT_DESCRIPTION,
   keywords: [
-    '長野市', '長野県', 'テニスコート', 'サッカー場', 'フットサル', '公共施設',
-    '人工芝', 'ナイター', '空き状況', '予約', '施設検索',
+    '長野県', '長野市', '松本市', 'テニスコート', 'サッカー場', 'フットサル', '体育館',
+    '公共施設', '人工芝', 'ナイター', '空き状況', '予約', '施設検索',
   ],
   authors: [{ name: SITE_NAME }],
   openGraph: {
@@ -76,17 +76,33 @@ export default function RootLayout({
           <div className="container mx-auto px-4 py-6 max-w-6xl text-sm text-gray-600">
             <p className="mb-2">
               <strong>データ提供元</strong>:
-              長野市公式ホームページ (
-              <a
-                href="https://www.city.nagano.nagano.jp/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-brand-600 hover:underline"
-              >
-                www.city.nagano.nagano.jp
-              </a>
-              ) ／ まちかぎリモート
             </p>
+            <ul className="mb-2 ml-4 list-disc text-xs space-y-0.5">
+              <li>
+                長野市公式ホームページ (
+                <a
+                  href="https://www.city.nagano.nagano.jp/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-600 hover:underline"
+                >
+                  www.city.nagano.nagano.jp
+                </a>
+                ) ／ まちかぎリモート
+              </li>
+              <li>
+                松本市公式ホームページ (
+                <a
+                  href="https://www.city.matsumoto.nagano.jp/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-600 hover:underline"
+                >
+                  www.city.matsumoto.nagano.jp
+                </a>
+                ) ／ 松本市公共施設案内・予約システム(webR)
+              </li>
+            </ul>
             <p className="mb-3">
               本サイトの情報は最終確認時刻のスナップショットです。予約時は必ず公式サイトでご確認ください。
             </p>
