@@ -270,9 +270,18 @@ def fetch_facility_calendar(page, cfg: CityConfig, ext_id: str, name: str, type_
     page.evaluate("() => __doPostBack('next', '')")
     page.wait_for_load_state("networkidle", timeout=30000)
     page.wait_for_timeout(1500)
-    html = page.content()
+    # content取得をリトライ (ナビゲーション中の "page is navigating" レース対策)
+    html = ""
+    for _ in range(3):
+        try:
+            page.wait_for_load_state("domcontentloaded", timeout=10000)
+            html = page.content()
+            if html:
+                break
+        except Exception:
+            page.wait_for_timeout(2000)
     if "checkdate" not in html:
-        (cfg.shots_dir / f"FAIL_calendar_{ext_id}.html").write_text(html, encoding="utf-8")
+        (cfg.shots_dir / f"FAIL_calendar_{ext_id}.html").write_text(html or "", encoding="utf-8")
         raise RuntimeError("カレンダー画面に未到達 (checkdate 無し)")
     return html
 
