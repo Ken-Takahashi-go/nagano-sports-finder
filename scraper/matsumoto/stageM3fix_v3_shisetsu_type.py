@@ -52,13 +52,15 @@ OUTPUT_JSON = SCRIPT_DIR / "outputs" / "matsumoto_M3fix_v3_facilities.json"
 
 console = Console()
 
-# A3スコープをカバーする施設種別 (value, 名称)
-TARGET_TYPES = [
-    ("05", "サッカー場"),
-    ("07", "庭球場"),
-    ("08", "運動広場"),
-    ("11", "競技場"),
-]
+# webR 施設種類 value → 名称 (radioShisetsuMiddle)
+TYPE_NAMES = {
+    "01": "体育館", "02": "剣道場", "03": "柔道室", "04": "卓球室",
+    "05": "サッカー場", "06": "野球場", "07": "庭球場", "08": "運動広場",
+    "09": "ゲートボール場", "10": "トレーニング室", "11": "競技場",
+    "12": "球場", "13": "会議室",
+}
+# デフォルト: A3スコープ (テニス + サッカー/フットサル)
+DEFAULT_TYPES = "05,07,08,11"
 
 
 def snapshot(page, name: str) -> None:
@@ -124,7 +126,19 @@ def search_by_type(page, type_value: str, type_name: str) -> list[dict]:
 
 
 def main() -> int:
-    console.print("[bold green]Stage M3-fix v3: 施設種類でテニス・サッカー施設取得[/bold green]\n")
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--types", default=DEFAULT_TYPES,
+                    help="カンマ区切りの施設種類 value (例: 01=体育館, 07=庭球場)")
+    args = ap.parse_args()
+
+    target_types = [(t.strip(), TYPE_NAMES.get(t.strip(), t.strip()))
+                    for t in args.types.split(",") if t.strip()]
+    types_str = "_".join(t for t, _ in target_types)
+    out_json = SCRIPT_DIR / "outputs" / f"matsumoto_M3fix_v3_{types_str}.json"
+
+    console.print(f"[bold green]Stage M3-fix v3: 施設種類検索[/bold green]")
+    console.print(f"[dim]対象種別: {target_types}[/dim]\n")
 
     all_facilities: list[dict] = []
     seen_values: set[str] = set()
@@ -136,7 +150,7 @@ def main() -> int:
         page = context.new_page()
         page.set_default_timeout(20000)
 
-        for type_value, type_name in TARGET_TYPES:
+        for type_value, type_name in target_types:
             console.print(f"[cyan]>>> 施設種別 {type_value} = {type_name}[/cyan]")
             try:
                 items = search_by_type(page, type_value, type_name)
