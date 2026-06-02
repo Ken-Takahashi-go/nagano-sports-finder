@@ -5,7 +5,7 @@ import './globals.css';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
 const SITE_NAME = '長野県公共施設ナビ';
 const DEFAULT_DESCRIPTION =
-  '長野市・松本市・塩尻市の公共テニスコート・サッカー場・フットサル場・体育館を横断検索。ナイター・人工芝・屋内・無料施設・市町村で絞り込み可能。97施設のデータベース。';
+  '長野市・松本市・塩尻市・茅野市・諏訪市・岡谷市の公共テニスコート・サッカー場・フットサル場・体育館を横断検索。ナイター・人工芝・屋内・無料施設・市町村で絞り込み可能。114施設のデータベース。';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -113,6 +113,9 @@ export default function RootLayout({
                   www.city.shiojiri.lg.jp
                 </a>
                 ) ／ 塩尻市公共施設予約システム(webR)
+              </li>
+              <li>
+                茅野市・諏訪市・岡谷市 各市公式サイト ／ 各市公共施設予約システム(webR)
               </li>
             </ul>
             <p className="mb-3">

@@ -93,7 +93,21 @@ jobs:
         run: |
           python shiojiri/scrape.py
 
+      - name: Run Chino/Suwa/Okaya scrape (webR)
+        working-directory: ./scraper
+        env:
+          SCRAPER_NAME: NaganoSportsFinder
+          SCRAPER_VERSION: '0.1.0'
+          SCRAPER_CONTACT: ${{ secrets.SCRAPER_CONTACT }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          for c in chino suwa okaya; do
+            echo "=== $c ==="
+            python webr_scrape.py --city $c
+          done
+
       - name: Summary
         if: always()
         run: |
-          echo "::notice::webR系(松本・塩尻)スクレイプ完了 / 結果は Supabase の availability_current で確認可"
+          echo "::notice::webR系5市(松本・塩尻・茅野・諏訪・岡谷)スクレイプ完了 / 結果は Supabase の availability_current で確認可"

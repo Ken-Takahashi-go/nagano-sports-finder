@@ -109,6 +109,24 @@ export default async function HomePage() {
           >
             📍 塩尻市の施設
           </Link>
+          <Link
+            href="/search?municipality=茅野市"
+            className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
+          >
+            📍 茅野市の施設
+          </Link>
+          <Link
+            href="/search?municipality=諏訪市"
+            className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
+          >
+            📍 諏訪市の施設
+          </Link>
+          <Link
+            href="/search?municipality=岡谷市"
+            className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
+          >
+            📍 岡谷市の施設
+          </Link>
         </div>
       </section>
 

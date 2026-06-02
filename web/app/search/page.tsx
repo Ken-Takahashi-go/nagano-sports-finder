@@ -105,6 +105,9 @@ export default async function SearchPage({
           <FilterLink current={searchParams} param="municipality" value="長野市" label="長野市" />
           <FilterLink current={searchParams} param="municipality" value="松本市" label="松本市" />
           <FilterLink current={searchParams} param="municipality" value="塩尻市" label="塩尻市" />
+          <FilterLink current={searchParams} param="municipality" value="茅野市" label="茅野市" />
+          <FilterLink current={searchParams} param="municipality" value="諏訪市" label="諏訪市" />
+          <FilterLink current={searchParams} param="municipality" value="岡谷市" label="岡谷市" />
         </div>
         {/* 競技・属性 */}
         <div className="flex flex-wrap gap-2 text-sm">
