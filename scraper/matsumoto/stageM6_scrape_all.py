@@ -58,6 +58,22 @@ USER_AGENT = (
 BASE_URL = "https://yoyaku.city.matsumoto.lg.jp"
 EXTERNAL_SYSTEM = "matsumoto_webR"
 INTERVAL = 3.0  # 施設間の待機秒 (負荷配慮)
+
+# facility_code プレフィックス → webR 施設種類 (radioShisetsuMiddle value)
+#   01=体育館 05=サッカー場 07=庭球場 (M3-fix v3 で確認)
+# zenshisetsu(登録済グループ)は体育館しか出さないため、全施設を施設種類検索経由に統一
+SHISETSU_TYPE = {
+    "MAT-GYM": "01",  # 体育館
+    "MAT-TEN": "07",  # 庭球場 (屋内運動場含む)
+    "MAT-SOC": "05",  # サッカー場
+}
+
+
+def shisetsu_type_for(code: str) -> str | None:
+    for pfx, tv in SHISETSU_TYPE.items():
+        if code.startswith(pfx):
+            return tv
+    return None
 DEFAULT_OPEN = "09:00"
 DEFAULT_CLOSE = "21:00"
 SHOTS = SCRIPT_DIR / "outputs" / "matsumoto_M6_screenshots"
@@ -214,30 +230,58 @@ def aggregate_daily(rooms: list[dict]) -> list[dict]:
 # --------------------------------------------------------------------
 # Playwright: 1施設のカレンダー HTML を取得
 # --------------------------------------------------------------------
-def goto_zenshisetsu(page) -> None:
-    """webR → 空き照会 → 全施設一覧 (filterAll)"""
+def goto_kuki(page) -> None:
+    """webR → 空き照会 画面まで"""
     page.goto(f"{BASE_URL}/WebR/", wait_until="networkidle", timeout=45000)
     page.wait_for_timeout(1500)
     page.locator("text=空き照会").first.click()
     page.wait_for_load_state("networkidle", timeout=30000)
     page.wait_for_timeout(1500)
-    page.evaluate("() => __doPostBack('zenshisetsu', '')")
+
+
+def fetch_facility_calendar(page, ext_id: str, name: str, type_value: str) -> str | None:
+    """施設種類検索 → 対象施設を選択 → 次へ進む → カレンダー HTML 返却"""
+    goto_kuki(page)
+
+    # 「施設種類から探す」タブをアクティブ化
+    try:
+        tab = page.locator("a:has-text('施設種類から探す')").first
+        if tab.is_visible(timeout=3000):
+            tab.click()
+            page.wait_for_timeout(600)
+    except Exception:
+        pass
+
+    # 施設種別 radio を選択 (体育館01 / サッカー場05 / 庭球場07)
+    page.locator(f"label[for='radioShisetsuMiddle{type_value}']").first.click(force=True)
+    page.wait_for_timeout(400)
+
+    # 検索実行 searchShisetsu() → __doPostBack('btnSearchViaShisetsu','')
+    try:
+        page.evaluate("() => searchShisetsu()")
+    except Exception:
+        page.locator("#btnSearchViaShisetsu").first.click(force=True)
     page.wait_for_load_state("networkidle", timeout=30000)
     page.wait_for_timeout(1500)
 
-
-def fetch_facility_calendar(page, ext_id: str, name: str) -> str | None:
-    """external_facility_id の施設を選択 → 次へ進む → カレンダー HTML 返却"""
-    goto_zenshisetsu(page)
-
-    # checkShisetsu[value=ext_id] の label をクリック
+    # 検索結果のレンダリング完了を待つ (レース対策):
+    # 対象 checkbox が DOM に現れるまで明示待機。現れなければ短い再待機を1回。
     cb_id = f"checkShisetsu{ext_id}"
+    try:
+        page.wait_for_selector(f"#{cb_id}", timeout=15000, state="attached")
+    except Exception:
+        # 結果がまだ描画されていない可能性 → 追加待機して再判定
+        page.wait_for_timeout(2500)
+        if page.locator(f"#{cb_id}").count() == 0:
+            # 施設名フォールバック (label テキスト一致)
+            if page.locator(f"label:has-text('{name}')").count() == 0:
+                (SHOTS / f"FAIL_select_{ext_id}.html").write_text(page.content(), encoding="utf-8")
+                raise RuntimeError(f"checkbox 未出現 (id={cb_id}, name={name})")
+
+    # label をクリック (DOM上にあれば force クリック可)
     label = page.locator(f"label[for='{cb_id}']").first
-    if not label.is_visible(timeout=4000):
-        # フォールバック: 施設名でラベル検索
+    if label.count() == 0:
         label = page.locator(f"label:has-text('{name}')").first
-        if not label.is_visible(timeout=3000):
-            raise RuntimeError(f"checkbox label 未発見 (id={cb_id}, name={name})")
     label.click(force=True)
     page.wait_for_timeout(400)
 
@@ -247,10 +291,8 @@ def fetch_facility_calendar(page, ext_id: str, name: str) -> str | None:
     page.wait_for_timeout(1500)
 
     html = page.content()
-    # カレンダー画面か検証 (checkdate が含まれるか)
     if "checkdate" not in html:
-        # 念のためスクショ保存
-        (SHOTS / f"FAIL_{ext_id}.html").write_text(html, encoding="utf-8")
+        (SHOTS / f"FAIL_calendar_{ext_id}.html").write_text(html, encoding="utf-8")
         raise RuntimeError("カレンダー画面に未到達 (checkdate 無し)")
     return html
 
@@ -262,6 +304,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--code", default=None, help="カンマ区切り facility_code でフィルタ (テスト用)")
     args = ap.parse_args()
 
     console.print("[bold green]Stage M6: 松本市 全件空き状況スクレイプ[/bold green]\n")
@@ -276,6 +319,9 @@ def main() -> int:
         "select": "id,facility_code,facility_name,external_facility_id",
         "order": "external_facility_id",
     })
+    if args.code:
+        wanted = set(c.strip() for c in args.code.split(","))
+        facilities = [f for f in facilities if f["facility_code"] in wanted]
     if args.limit:
         facilities = facilities[:args.limit]
     console.print(f"[cyan]対象施設: {len(facilities)}件[/cyan]\n")
@@ -294,9 +340,14 @@ def main() -> int:
             ext_id = fac["external_facility_id"]
             name = fac["facility_name"]
             code = fac["facility_code"]
-            console.print(f"[bold][{i}/{len(facilities)}] {code} {name} (webR={ext_id})[/bold]")
+            type_value = shisetsu_type_for(code)
+            console.print(f"[bold][{i}/{len(facilities)}] {code} {name} (webR={ext_id}, 種別={type_value})[/bold]")
+            if not type_value:
+                console.print(f"  [yellow]→ スキップ: 施設種別が未定義 (code={code})[/yellow]")
+                results_summary.append((code, name, 0, 0, "SKIP: 種別未定義"))
+                continue
             try:
-                html = fetch_facility_calendar(page, ext_id, name)
+                html = fetch_facility_calendar(page, ext_id, name, type_value)
                 rooms = parse_calendar_html(html)
                 daily = aggregate_daily(rooms)
                 n_open = sum(1 for d in daily if d["status"] in ("空き", "一部空き"))
