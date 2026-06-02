@@ -2,6 +2,12 @@ import type { AvailabilitySlot, AvailabilityStatus } from '@/lib/types';
 
 const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'];
 
+/** 市町村 → 空き状況データの出典 (予約システム名) */
+const SOURCE_BY_MUNICIPALITY: Record<string, string> = {
+  '長野市': '長野市まちかぎリモート',
+  '松本市': '松本市公共施設予約システム(webR)',
+};
+
 /** 過去時間帯のスロットを除外 (今日の場合は現時刻以降のみ) */
 function filterPastSlots(slots: AvailabilitySlot[]): AvailabilitySlot[] {
   const now = new Date();
@@ -67,19 +73,28 @@ export function AvailabilitySection({
   slots,
   officialUrl,
   reservationUrl,
+  municipality,
+  phoneNumber,
 }: {
   slots: AvailabilitySlot[];
   officialUrl?: string | null;
   reservationUrl?: string | null;
+  municipality?: string | null;
+  phoneNumber?: string | null;
 }) {
   const futureSlots = filterPastSlots(slots);
+  const sourceLabel =
+    SOURCE_BY_MUNICIPALITY[municipality ?? ''] ?? '公式予約システム';
 
   if (futureSlots.length === 0) {
     return (
       <section className="mb-6 bg-white border border-gray-200 rounded-lg p-5">
         <h2 className="text-lg font-bold mb-3 text-gray-900">空き状況</h2>
-        <p className="text-sm text-gray-600 mb-3">
-          この施設の空き状況は現在自動取得していません。公式予約サイトでご確認ください。
+        <p className="text-sm text-gray-700 mb-1">
+          この施設は当サイトの空き状況自動取得に対応していません。
+        </p>
+        <p className="text-xs text-gray-500 mb-3">
+          窓口・電話、または公式予約サイトで直接ご確認ください。
         </p>
         <div className="flex flex-wrap gap-2 text-sm">
           {reservationUrl && (
@@ -90,6 +105,14 @@ export function AvailabilitySection({
               className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded font-medium"
             >
               予約サイトで確認 →
+            </a>
+          )}
+          {phoneNumber && (
+            <a
+              href={`tel:${phoneNumber}`}
+              className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded font-medium"
+            >
+              📞 {phoneNumber}
             </a>
           )}
           {officialUrl && (
@@ -126,7 +149,7 @@ export function AvailabilitySection({
       <div className="flex flex-wrap items-baseline justify-between mb-3 gap-2">
         <h2 className="text-lg font-bold text-gray-900">空き状況</h2>
         <span className="text-xs text-gray-500">
-          最終確認: {lastCheckedJa} ・ 出典: 長野市まちかぎリモート
+          最終確認: {lastCheckedJa} ・ 出典: {sourceLabel}
         </span>
       </div>
 

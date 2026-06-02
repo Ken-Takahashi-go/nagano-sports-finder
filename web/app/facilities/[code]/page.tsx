@@ -181,6 +181,8 @@ export default async function FacilityDetailPage({
         slots={availabilitySlots}
         officialUrl={f.official_url}
         reservationUrl={f.reservation_url}
+        municipality={f.municipality}
+        phoneNumber={f.phone_number}
       />
 
       {/* 地図 */}
