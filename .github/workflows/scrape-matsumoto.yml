@@ -1,8 +1,9 @@
-name: Daily Scrape Matsumoto (webR)
+name: Daily Scrape webR Cities (Matsumoto/Shiojiri)
 
-# 松本市公共施設予約システム(webR)の空き状況を日次取得。
+# webR系(富士通)公共施設予約システムの空き状況を日次取得 (松本市・塩尻市)。
 # 長野市(scrape.yml)とは別ワークフロー:
-#   - 松本市は ASP.NET WebForms の __doPostBack 遷移が必須 → Playwright を使用
+#   - webRは ASP.NET WebForms の __doPostBack 遷移が必須 → Playwright を使用
+#   - 共通コア scraper/webr_core.py を各市の薄いラッパが呼ぶ構成
 #   - スケジュールを 30分ずらして自治体サーバ・GitHub Actions の負荷を分散
 on:
   schedule:
@@ -81,7 +82,18 @@ jobs:
           fi
           python matsumoto/stageM6_scrape_all.py $LIMIT_ARG
 
+      - name: Run Shiojiri scrape (all linked facilities)
+        working-directory: ./scraper
+        env:
+          SCRAPER_NAME: NaganoSportsFinder
+          SCRAPER_VERSION: '0.1.0'
+          SCRAPER_CONTACT: ${{ secrets.SCRAPER_CONTACT }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python shiojiri/scrape.py
+
       - name: Summary
         if: always()
         run: |
-          echo "::notice::松本市スクレイプ完了 / 結果は Supabase の availability_current で確認可"
+          echo "::notice::webR系(松本・塩尻)スクレイプ完了 / 結果は Supabase の availability_current で確認可"

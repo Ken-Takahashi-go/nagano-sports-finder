@@ -103,6 +103,12 @@ export default async function HomePage() {
           >
             📍 松本市の施設
           </Link>
+          <Link
+            href="/search?municipality=塩尻市"
+            className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
+          >
+            📍 塩尻市の施設
+          </Link>
         </div>
       </section>
 
