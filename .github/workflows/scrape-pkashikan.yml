@@ -1,0 +1,89 @@
+name: Daily Scrape P-Kashikan Cities (Ueda/Suzaka/Komagane/Tomi/Omachi)
+
+# P-Kashikan系(PHP・Playwright)の空き状況を日次取得 (上田・須坂・駒ヶ根・東御・大町)。
+# webR(scrape-matsumoto.yml)とは別ワークフロー:
+#   - P-Kashikanは競技×日でループするため検索回数が多く時間がかかる → timeout拡大
+#   - スケジュールを JST 04:00 にずらし、webR(03:00)・長野(02:30)と分散
+#   - 施設は施設名ベースで照合 (pkashikan_core)
+on:
+  schedule:
+    - cron: '0 19 * * *'   # JST 04:00 (UTC 19:00)
+  workflow_dispatch:
+    inputs:
+      days:
+        description: '取得日数'
+        required: false
+        default: '10'
+        type: string
+      city:
+        description: '対象市 (空欄=全市)'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  scrape-pkashikan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55  # 5市×4競技×10日 ≈ 30分。余裕を持って55分
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: 'scraper/requirements-actions-matsumoto.txt'
+
+      - name: Install dependencies (Playwright含む)
+        working-directory: ./scraper
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-actions-matsumoto.txt
+
+      - name: Install Playwright Chromium
+        working-directory: ./scraper
+        run: |
+          python -m playwright install --with-deps chromium
+
+      - name: Verify environment
+        working-directory: ./scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SCRAPER_CONTACT: ${{ secrets.SCRAPER_CONTACT }}
+        run: |
+          python --version
+          pip list | grep -E "(httpx|beautifulsoup|lxml|rich|python-dotenv|playwright)" || true
+          python -c "import os; \
+            url=os.getenv('SUPABASE_URL',''); key=os.getenv('SUPABASE_SERVICE_ROLE_KEY',''); \
+            print(f'SUPABASE_URL set: {bool(url)} https: {url.startswith(\"https://\")}'); \
+            print(f'SERVICE_ROLE_KEY set: {bool(key)} len: {len(key)}')"
+
+      - name: Run P-Kashikan scrape
+        working-directory: ./scraper
+        env:
+          SCRAPER_NAME: NaganoSportsFinder
+          SCRAPER_VERSION: '0.1.0'
+          SCRAPER_CONTACT: ${{ secrets.SCRAPER_CONTACT }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          DAYS="${{ inputs.days }}"; DAYS="${DAYS:-10}"
+          SPORTS="basketball,soccer,tennis_hard,futsal"
+          if [ -n "${{ inputs.city }}" ]; then
+            CITIES="${{ inputs.city }}"
+          else
+            CITIES="ueda suzaka komagane tomi omachi"
+          fi
+          for c in $CITIES; do
+            echo "===== $c (days=$DAYS) ====="
+            python pkashikan_scrape.py --city "$c" --days "$DAYS" --sports "$SPORTS" || echo "::warning::$c のスクレイプで一部失敗"
+          done
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "::notice::P-Kashikan系スクレイプ完了 / 結果は Supabase の availability_current で確認可"

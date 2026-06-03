@@ -5,7 +5,7 @@ import './globals.css';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
 const SITE_NAME = '長野県公共施設ナビ';
 const DEFAULT_DESCRIPTION =
-  '長野市・松本市・塩尻市・茅野市・諏訪市・岡谷市の公共テニスコート・サッカー場・フットサル場・体育館を横断検索。ナイター・人工芝・屋内・無料施設・市町村で絞り込み可能。114施設のデータベース。';
+  '長野県11市(長野・松本・上田・須坂・駒ヶ根・大町・諏訪・東御・塩尻・茅野・岡谷)の公共テニスコート・サッカー場・フットサル場・体育館を横断検索。ナイター・人工芝・屋内・無料施設・市町村で絞り込み可能。243施設のデータベース。';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -116,6 +116,9 @@ export default function RootLayout({
               </li>
               <li>
                 茅野市・諏訪市・岡谷市 各市公式サイト ／ 各市公共施設予約システム(webR)
+              </li>
+              <li>
+                上田市・須坂市・駒ヶ根市・東御市・大町市 各市公式サイト ／ 各市公共施設予約システム(P-Kashikan)
               </li>
             </ul>
             <p className="mb-3">
