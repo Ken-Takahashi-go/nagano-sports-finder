@@ -12,9 +12,9 @@ import {
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: '長野県11市(長野・松本・上田ほか)の公共スポーツ施設を横断検索',
+  title: '長野県14市町村(長野・松本・上田ほか)の公共スポーツ施設を横断検索',
   description:
-    '長野県11市(長野・松本・上田・須坂・諏訪ほか)の公共テニスコート・サッカー場・フットサル場・体育館243施設を横断検索。ナイター可能テニス、屋内施設、無料施設、市町村などで絞り込み。',
+    '長野県14市町村(長野・松本・上田・須坂・千曲・伊那ほか)の公共テニスコート・サッカー場・フットサル場・体育館294施設を横断検索。ナイター可能テニス、屋内施設、無料施設、市町村などで絞り込み。',
 };
 
 export default async function HomePage() {
@@ -33,7 +33,7 @@ export default async function HomePage() {
     name: '長野県公共施設ナビ',
     url: siteUrl,
     description:
-      '長野県11市の公共テニスコート・サッカー場・フットサル場・体育館を横断検索できるデータベース。',
+      '長野県14市町村の公共テニスコート・サッカー場・フットサル場・体育館を横断検索できるデータベース。',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
@@ -59,7 +59,7 @@ export default async function HomePage() {
           テニス・サッカー・フットサル・体育館の空き状況を、ひとつのサイトで比較
         </p>
         <p className="text-brand-100 text-xs md:text-sm mb-6">
-          ※現在対応地域：長野県11市（長野・松本・上田ほか） ／ 随時追加
+          ※現在対応地域：長野県14市町村（長野・松本・上田ほか） ／ 随時追加
         </p>
 
         {/* 検索ボックス */}
