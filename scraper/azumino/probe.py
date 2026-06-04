@@ -110,25 +110,42 @@ def main() -> int:
                           f"{('href='+l['href'][:30]) if l['href'] else ''}"
                           f"{(' onclick='+l['onclick'][:40]) if l['onclick'] else ''}")
 
-        console.print("\n[cyan]Step 2: 空き照会導線をクリック[/cyan]")
-        clicked = False
-        for kw in ["空き照会", "空き状況", "あき", "照会", "予約申込", "施設の予約", "検索"]:
-            try:
-                el = page.locator(f"text={kw}").first
-                if el.count() and el.is_visible(timeout=2000):
-                    before = page.url
-                    el.click()
-                    page.wait_for_load_state("networkidle", timeout=20000)
-                    page.wait_for_timeout(2000)
-                    console.print(f"  → 「{kw}」クリック (URL: {before} → {page.url})")
-                    clicked = True
-                    snapshot(page, "02_after_aki")
-                    analyze_page(page, f"空き照会({kw})後")
-                    break
-            except Exception as e:
-                console.print(f"  [dim]{kw}: {e}[/dim]")
-        if not clicked:
-            console.print("  [yellow]空き照会導線が自動で見つからず。Step1bのリンク一覧から手動判断要[/yellow]")
+        console.print("\n[cyan]Step 2: スポーツ施設 → 施設一覧[/cyan]")
+        try:
+            page.locator("text=スポーツ施設").first.click()
+            page.wait_for_load_state("networkidle", timeout=20000)
+            page.wait_for_timeout(2000)
+            snapshot(page, "02_sports")
+            analyze_page(page, "スポーツ施設")
+            console.print("  操作要素(先頭25):")
+            for l in list_interactives(page)[:25]:
+                console.print(f"    [{l['name'][:24]:24s}] '{l['text']}' {l['onclick'][:38]}")
+            # Step3: 1施設チェック → 次へ → カレンダー
+            console.print("\n[cyan]Step 3: 施設選択 → 次へ → カレンダー[/cyan]")
+            page.locator("text=豊科勤労者総合スポーツ施設").first.click()
+            page.wait_for_timeout(1000)
+            page.evaluate("() => { if(typeof __doPostBack==='function') __doPostBack('ucPCFooter$btnForward',''); }")
+            page.wait_for_load_state("networkidle", timeout=20000)
+            page.wait_for_timeout(2500)
+            snapshot(page, "03_nichiji")
+            analyze_page(page, "日時選択")
+            # Step4: 次へ → 空き状況カレンダー(最終)
+            console.print("\n[cyan]Step 4: 次へ → 空き状況カレンダー[/cyan]")
+            page.evaluate("() => { if(typeof __doPostBack==='function') __doPostBack('ucPCFooter$btnForward',''); }")
+            page.wait_for_load_state("networkidle", timeout=20000)
+            page.wait_for_timeout(2500)
+            snapshot(page, "04_availability")
+            analyze_page(page, "空き状況(最終)")
+            console.print(f"  → URL: {page.url}")
+            html = page.content()
+            for sym in ["○", "△", "×", "空き", "−", "休"]:
+                c = html.count(sym)
+                if c:
+                    console.print(f"  記号'{sym}': {c}回")
+            imgs = page.evaluate("() => [...new Set(Array.from(document.querySelectorAll('img')).map(i=>(i.src||'').split('/').pop()))].filter(v=>/aki|maru|batu|status|seat/i.test(v)).slice(0,10)")
+            console.print(f"  状態画像候補: {imgs}")
+        except Exception as e:
+            console.print(f"  [red]Step 失敗: {e}[/red]")
 
         browser.close()
 
