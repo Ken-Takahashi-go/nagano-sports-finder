@@ -1,0 +1,69 @@
+name: Daily Scrape Azumino (富士通Wg_系)
+
+# 安曇野市公共施設予約システム(富士通Wg_系/ASP.NET WebForms)の空き状況を日次取得。
+# webR/P-Kashikan/NELCSとは別エンジン:
+#   - 4段階のPostBack遷移を Playwright で辿る(ModeSelect→施設選択→日時→施設別空き状況)
+#   - 空き状況は hidden input ..._bYYYYMMDD の value=○△×
+#   - スケジュールを JST 05:00 にずらし他ワークフローと分散
+#   - 施設は施設名ベースで照合
+on:
+  schedule:
+    - cron: '0 20 * * *'   # JST 05:00 (UTC 20:00)
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: '一度に選択する施設数'
+        required: false
+        default: '5'
+        type: string
+
+jobs:
+  scrape-azumino:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: 'scraper/requirements-actions-matsumoto.txt'
+
+      - name: Install dependencies (Playwright含む)
+        working-directory: ./scraper
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-actions-matsumoto.txt
+
+      - name: Install Playwright Chromium
+        working-directory: ./scraper
+        run: python -m playwright install --with-deps chromium
+
+      - name: Verify environment
+        working-directory: ./scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python --version
+          python -c "import os; print('SUPABASE set:', bool(os.getenv('SUPABASE_URL')), bool(os.getenv('SUPABASE_SERVICE_ROLE_KEY')))"
+
+      - name: Run Azumino scrape
+        working-directory: ./scraper
+        env:
+          SCRAPER_NAME: NaganoSportsFinder
+          SCRAPER_VERSION: '0.1.0'
+          SCRAPER_CONTACT: ${{ secrets.SCRAPER_CONTACT }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          BATCH="${{ inputs.batch }}"; BATCH="${BATCH:-5}"
+          python azumino_core.py --batch "$BATCH" || echo "::warning::安曇野スクレイプで一部失敗"
+
+      - name: Summary
+        if: always()
+        run: echo "::notice::安曇野スクレイプ完了 / 結果は Supabase の availability_current で確認可"
