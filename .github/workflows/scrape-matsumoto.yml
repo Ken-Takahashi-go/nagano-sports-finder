@@ -21,7 +21,7 @@ on:
 jobs:
   scrape-matsumoto:
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # 10施設で約3分。Playwright install 含め余裕を持って30分
+    timeout-minutes: 40  # webR5市計約54施設(時間帯別)。Playwright install 含め余裕を持って40分
 
     steps:
       - name: Checkout code
@@ -64,7 +64,7 @@ jobs:
             print(f'SUPABASE_SERVICE_ROLE_KEY set: {bool(key)} len: {len(key)}'); \
             print(f'SCRAPER_CONTACT set: {bool(contact)} len: {len(contact)}')"
 
-      - name: Run Matsumoto scrape (all linked facilities)
+      - name: Run Matsumoto scrape (時間帯別 / 統一コア)
         working-directory: ./scraper
         env:
           # 公開設定
@@ -80,9 +80,10 @@ jobs:
             LIMIT_ARG="--limit ${{ inputs.limit }}"
             echo "上限指定: ${{ inputs.limit }} 施設"
           fi
-          python matsumoto/stageM6_scrape_all.py $LIMIT_ARG
+          # 時間帯別モード: 公式と同じ時間帯バケットで取得 (webr_core 統一パス)
+          python webr_scrape.py --city matsumoto --timeband $LIMIT_ARG
 
-      - name: Run Shiojiri scrape (all linked facilities)
+      - name: Run Shiojiri scrape (時間帯別)
         working-directory: ./scraper
         env:
           SCRAPER_NAME: NaganoSportsFinder
@@ -91,9 +92,9 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          python shiojiri/scrape.py
+          python shiojiri/scrape.py --timeband
 
-      - name: Run Chino/Suwa/Okaya scrape (webR)
+      - name: Run Chino/Suwa/Okaya scrape (時間帯別)
         working-directory: ./scraper
         env:
           SCRAPER_NAME: NaganoSportsFinder
@@ -104,7 +105,7 @@ jobs:
         run: |
           for c in chino suwa okaya; do
             echo "=== $c ==="
-            python webr_scrape.py --city $c
+            python webr_scrape.py --city $c --timeband
           done
 
       - name: Summary

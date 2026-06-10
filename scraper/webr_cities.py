@@ -10,6 +10,11 @@ webR系 各市の CityConfig 集約 (Phase 2 横展開)
 from webr_core import CityConfig
 
 CITIES: dict[str, CityConfig] = {
+    "matsumoto": CityConfig(
+        name="松本市", external_system="matsumoto_webR",
+        base_url="https://yoyaku.city.matsumoto.lg.jp",
+        type_map={"MAT-GYM": "01", "MAT-TEN": "07", "MAT-SOC": "05", "MAT-GND": "08"},
+    ),
     "chino": CityConfig(
         name="茅野市", external_system="chino_webR",
         base_url="https://www.pf489.com/chino",
