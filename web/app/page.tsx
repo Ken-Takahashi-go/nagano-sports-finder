@@ -89,44 +89,30 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        {/* 市町村別クイック導線 */}
+        {/* 市町村別クイック導線 (エリア別ランディングへ) */}
         <div className="flex flex-wrap gap-3 mt-3">
           <Link
-            href="/search?municipality=長野市"
-            className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
+            href="/area"
+            className="inline-flex items-center gap-2 bg-white text-brand-700 px-5 py-2 rounded-lg font-bold shadow hover:bg-brand-50 transition text-sm"
           >
-            📍 長野市の施設
+            🗺 エリア別で探す
           </Link>
-          <Link
-            href="/search?municipality=松本市"
-            className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
-          >
-            📍 松本市の施設
-          </Link>
-          <Link
-            href="/search?municipality=塩尻市"
-            className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
-          >
-            📍 塩尻市の施設
-          </Link>
-          <Link
-            href="/search?municipality=茅野市"
-            className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
-          >
-            📍 茅野市の施設
-          </Link>
-          <Link
-            href="/search?municipality=諏訪市"
-            className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
-          >
-            📍 諏訪市の施設
-          </Link>
-          <Link
-            href="/search?municipality=岡谷市"
-            className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
-          >
-            📍 岡谷市の施設
-          </Link>
+          {[
+            { ja: '長野市', slug: 'nagano' },
+            { ja: '松本市', slug: 'matsumoto' },
+            { ja: '塩尻市', slug: 'shiojiri' },
+            { ja: '茅野市', slug: 'chino' },
+            { ja: '諏訪市', slug: 'suwa' },
+            { ja: '岡谷市', slug: 'okaya' },
+          ].map((c) => (
+            <Link
+              key={c.slug}
+              href={`/area/${c.slug}`}
+              className="inline-flex items-center gap-2 bg-brand-800/30 hover:bg-brand-800/50 text-white border border-white/40 px-5 py-2 rounded-lg font-medium text-sm transition"
+            >
+              📍 {c.ja}
+            </Link>
+          ))}
         </div>
       </section>
 

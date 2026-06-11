@@ -42,6 +42,9 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  verification: {
+    google: 'UYU5VBFm_tum4kgORto0SpkFKLaZfxD2hpExJAn_OFw',
+  },
   alternates: { canonical: SITE_URL },
 };
 
@@ -60,6 +63,9 @@ export default function RootLayout({
               <span className="text-xs bg-brand-800 px-2 py-0.5 rounded">BETA</span>
             </Link>
             <nav className="flex items-center gap-4 text-sm">
+              <Link href="/area" className="hover:underline">
+                エリア別
+              </Link>
               <Link href="/search" className="hover:underline">
                 施設検索
               </Link>
