@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-public-space.com';
 const SITE_NAME = '長野県公共施設ナビ';
 const DEFAULT_DESCRIPTION =
   '長野県15市町村(長野・松本・上田・須坂・千曲・伊那・安曇野ほか)の公共テニスコート・サッカー場・フットサル場・体育館を横断検索。ナイター・人工芝・屋内・無料施設・市町村で絞り込み可能。325施設のデータベース。';

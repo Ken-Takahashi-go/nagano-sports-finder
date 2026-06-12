@@ -11,7 +11,7 @@ import type { FacilityWithSports, SportType } from '@/lib/types';
 export const revalidate = 60;
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-public-space.com';
 
 export const metadata: Metadata = {
   title: 'エリア別の公共スポーツ施設一覧（市町村×競技）',

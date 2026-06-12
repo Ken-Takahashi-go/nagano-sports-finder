@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { searchFacilities } from '@/lib/queries';
 import { MUNICIPALITY_SLUGS, isLandingSport } from '@/lib/areas';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-public-space.com';
 
 export const revalidate = 3600; // 1時間ごとにsitemapを再生成
 

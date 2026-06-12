@@ -26,7 +26,7 @@ export default async function HomePage() {
 
   // Schema.org JSON-LD (WebSite + 検索アクション)
   const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-public-space.com';
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',

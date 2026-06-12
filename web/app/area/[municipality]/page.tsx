@@ -13,7 +13,7 @@ import type { FacilityWithSports, SportType } from '@/lib/types';
 export const revalidate = 60;
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-sports-finder.vercel.app';
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-public-space.com';
 
 type Params = { municipality: string };
 
