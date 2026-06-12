@@ -9,7 +9,8 @@ export const revalidate = 3600; // 1時間ごとにsitemapを再生成
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const facilities = await searchFacilities();
 
-  // 静的ページ
+  // 静的ページ (robotsで /search? を遮断しているため検索ページはsitemapに含めない。
+  //  競技別の導線は /area 配下のランディングページがクロール可能な形で提供)
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: SITE_URL,
@@ -22,30 +23,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9,
-    },
-    {
-      url: `${SITE_URL}/search?sport=tennis`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/search?sport=soccer`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/search?sport=futsal`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/search?sport=tennis&lighting=true`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.7,
     },
   ];
 
