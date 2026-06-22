@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://nagano-public-space.com';
@@ -153,6 +154,7 @@ export default function RootLayout({
             </div>
           </div>
         </footer>
+        <Analytics />
       </body>
     </html>
   );
