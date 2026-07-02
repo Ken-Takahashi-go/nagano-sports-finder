@@ -309,7 +309,7 @@ def run_scrape(cfg: PKCityConfig, args) -> int:
             continue
         matched += 1
         common = {
-            "facility_id": fac["id"], "target_date": iso_date,
+            "facility_id": fac["id"], "court_name": "", "target_date": iso_date,
             "start_time": cfg.open_time, "end_time": cfg.close_time,
             "availability_status": status,
             "available_court_count": avail, "total_court_count": total,
@@ -325,7 +325,7 @@ def run_scrape(cfg: PKCityConfig, args) -> int:
     if not args.dry_run and payloads_current:
         # 日付ごとにまとめてupsert (バッチ)
         supa_upsert("availability_current", payloads_current,
-                    on_conflict="facility_id,target_date,start_time,end_time")
+                    on_conflict="facility_id,court_name,target_date,start_time,end_time")
         supa_insert("availability_snapshots", payloads_snapshot)
         console.print(f"  [green]→ DB投入: current {len(payloads_current)} / snapshot {len(payloads_snapshot)}[/green]")
     elif args.dry_run:

@@ -107,6 +107,7 @@ def process_facility(
         for a in aggregated:
             common = {
                 "facility_id": fid,
+                "court_name": "",
                 "target_date": a.target_date,
                 "start_time": a.start_time,
                 "end_time": a.end_time,
@@ -122,7 +123,7 @@ def process_facility(
 
         supa_upsert(
             "availability_current", payloads_current,
-            on_conflict="facility_id,target_date,start_time,end_time",
+            on_conflict="facility_id,court_name,target_date,start_time,end_time",
         )
         supa_insert("availability_snapshots", payloads_snapshot)
         console.print(f"  [green]✓ Supabaseに{len(aggregated)}行投入[/green]")

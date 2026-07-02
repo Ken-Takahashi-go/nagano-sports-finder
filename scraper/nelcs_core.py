@@ -338,7 +338,7 @@ def run_scrape(cfg: NelcsCityConfig, args) -> int:
         for d, st in data["cal"].items():
             avail = 1 if st == "空き" else 0
             common = {
-                "facility_id": fac["id"], "target_date": d,
+                "facility_id": fac["id"], "court_name": "", "target_date": d,
                 "start_time": cfg.open_time, "end_time": cfg.close_time,
                 "availability_status": st,
                 "available_court_count": avail, "total_court_count": 1,
@@ -353,7 +353,7 @@ def run_scrape(cfg: NelcsCityConfig, args) -> int:
 
     if not args.dry_run and pc:
         supa_upsert("availability_current", pc,
-                    on_conflict="facility_id,target_date,start_time,end_time")
+                    on_conflict="facility_id,court_name,target_date,start_time,end_time")
         supa_insert("availability_snapshots", ps)
         console.print(f"  [green]→ DB投入: {len(pc)}行[/green]")
     elif args.dry_run:
