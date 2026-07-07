@@ -144,8 +144,6 @@ export function AvailabilitySection({
     );
   }
 
-  const { dates, timeSlots, cells } = buildMatrix(futureSlots);
-
   // 最終確認時刻
   const lastChecked = futureSlots.reduce(
     (latest, s) => (s.last_checked_at > latest ? s.last_checked_at : latest),
@@ -157,6 +155,17 @@ export function AvailabilitySection({
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  // コート(設備)別にグループ化。court_name='' は単一コート(従来通り見出しなし)
+  const byCourt = new Map<string, AvailabilitySlot[]>();
+  for (const s of futureSlots) {
+    const key = s.court_name ?? '';
+    const list = byCourt.get(key) ?? [];
+    list.push(s);
+    byCourt.set(key, list);
+  }
+  const courts = Array.from(byCourt.keys()).sort((a, b) => a.localeCompare(b, 'ja'));
+  const multiCourt = courts.length > 1 || (courts.length === 1 && courts[0] !== '');
 
   return (
     <section className="mb-6 bg-white border border-gray-200 rounded-lg p-5">
@@ -170,74 +179,33 @@ export function AvailabilitySection({
       {/* 凡例 */}
       <div className="flex flex-wrap gap-3 mb-3 text-xs text-gray-600">
         <span className="flex items-center gap-1">
-          <StatusBadge status="空き" /> 全コート空き
+          <StatusBadge status="空き" /> 空き
         </span>
         <span className="flex items-center gap-1">
           <StatusBadge status="一部空き" /> 一部のみ空き
         </span>
         <span className="flex items-center gap-1">
-          <StatusBadge status="満" /> 全コート予約済
+          <StatusBadge status="満" /> 予約済
         </span>
       </div>
 
-      {/* マトリクス表 (横スクロール対応) */}
-      <div className="overflow-x-auto -mx-5 px-5">
-        <table className="min-w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b-2 border-gray-200">
-              <th className="sticky left-0 bg-white z-10 text-left text-xs font-medium text-gray-600 px-2 py-2 min-w-[80px]">
-                日付
-              </th>
-              {timeSlots.map((ts) => (
-                <th
-                  key={ts.key}
-                  className="text-center text-xs font-medium text-gray-600 px-1 py-2 min-w-[72px]"
-                >
-                  <div className="font-mono">
-                    {ts.start.slice(0, 5)}
-                    <br />
-                    {ts.end.slice(0, 5)}
-                  </div>
-                  {ts.fee != null && (
-                    <div className="text-amber-700 mt-1 font-medium">
-                      ¥{ts.fee.toLocaleString()}
-                    </div>
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {dates.map((date) => {
-              const d = new Date(date + 'T00:00:00');
-              const dow = WEEKDAY_JA[d.getDay()];
-              const dayClass =
-                d.getDay() === 0
-                  ? 'text-red-600'
-                  : d.getDay() === 6
-                    ? 'text-blue-600'
-                    : 'text-gray-800';
-              return (
-                <tr key={date} className="border-b border-gray-100">
-                  <td
-                    className={`sticky left-0 bg-white z-10 px-2 py-2 font-medium whitespace-nowrap ${dayClass}`}
-                  >
-                    {d.getMonth() + 1}/{d.getDate()} ({dow})
-                  </td>
-                  {timeSlots.map((ts) => {
-                    const cell = cells.get(`${date}|${ts.start}|${ts.end}`);
-                    return (
-                      <td key={ts.key} className="text-center px-1 py-2">
-                        {cell ? <CellContent slot={cell} ts={ts} /> : <span className="text-gray-300">−</span>}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {multiCourt && (
+        <p className="text-xs text-gray-500 mb-3">
+          この施設は設備(コート)ごとに分かれています。各コートの空き状況をご確認ください。
+        </p>
+      )}
+
+      {/* コート(設備)ごとのマトリクス表 */}
+      {courts.map((court) => (
+        <div key={court || '_'} className="mb-5 last:mb-0">
+          {multiCourt && (
+            <h3 className="text-sm font-bold text-gray-800 mb-1.5 bg-gray-50 px-2 py-1 rounded">
+              {court || 'その他'}
+            </h3>
+          )}
+          <CourtMatrix slots={byCourt.get(court)!} />
+        </div>
+      ))}
 
       <p className="text-xs text-gray-500 mt-4 pt-3 border-t border-gray-100">
         最新の空き状況は公式予約サイトで必ずご確認ください。
@@ -256,6 +224,70 @@ export function AvailabilitySection({
         )}
       </p>
     </section>
+  );
+}
+
+/** 1コート(設備)分の空き状況マトリクス表 (横スクロール対応) */
+function CourtMatrix({ slots }: { slots: AvailabilitySlot[] }) {
+  const { dates, timeSlots, cells } = buildMatrix(slots);
+  return (
+    <div className="overflow-x-auto -mx-5 px-5">
+      <table className="min-w-full text-sm border-collapse">
+        <thead>
+          <tr className="border-b-2 border-gray-200">
+            <th className="sticky left-0 bg-white z-10 text-left text-xs font-medium text-gray-600 px-2 py-2 min-w-[80px]">
+              日付
+            </th>
+            {timeSlots.map((ts) => (
+              <th
+                key={ts.key}
+                className="text-center text-xs font-medium text-gray-600 px-1 py-2 min-w-[72px]"
+              >
+                <div className="font-mono">
+                  {ts.start.slice(0, 5)}
+                  <br />
+                  {ts.end.slice(0, 5)}
+                </div>
+                {ts.fee != null && (
+                  <div className="text-amber-700 mt-1 font-medium">
+                    ¥{ts.fee.toLocaleString()}
+                  </div>
+                )}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {dates.map((date) => {
+            const d = new Date(date + 'T00:00:00');
+            const dow = WEEKDAY_JA[d.getDay()];
+            const dayClass =
+              d.getDay() === 0
+                ? 'text-red-600'
+                : d.getDay() === 6
+                  ? 'text-blue-600'
+                  : 'text-gray-800';
+            return (
+              <tr key={date} className="border-b border-gray-100">
+                <td
+                  className={`sticky left-0 bg-white z-10 px-2 py-2 font-medium whitespace-nowrap ${dayClass}`}
+                >
+                  {d.getMonth() + 1}/{d.getDate()} ({dow})
+                </td>
+                {timeSlots.map((ts) => {
+                  const cell = cells.get(`${date}|${ts.start}|${ts.end}`);
+                  return (
+                    <td key={ts.key} className="text-center px-1 py-2">
+                      {cell ? <CellContent slot={cell} ts={ts} /> : <span className="text-gray-300">−</span>}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

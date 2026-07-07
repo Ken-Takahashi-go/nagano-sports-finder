@@ -97,6 +97,7 @@ export const AVAILABILITY_LABEL: Record<AvailabilityStatus, string> = {
 export type AvailabilitySlot = {
   id: number;
   facility_id: string;
+  court_name: string;        // 設備(コート)名。単一コート/非対応施設は ''
   target_date: string;       // YYYY-MM-DD
   start_time: string;        // HH:MM:SS
   end_time: string;          // HH:MM:SS

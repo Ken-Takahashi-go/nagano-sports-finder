@@ -315,6 +315,77 @@ def aggregate_timeband(parsed: list[dict]) -> list[dict]:
 
 
 # --------------------------------------------------------------------
+# コート(部屋)別 パース  ※Phase1: 1施設内の設備ごとに分離
+# --------------------------------------------------------------------
+COURT_STATUS_TO_AVAIL = {
+    "available": ("空き", 1), "partial": ("一部空き", 1),
+    "full": ("満", 0), "unavailable": ("休館", 0), "closed": ("休館", 0),
+    "unknown": ("不明", 0),
+}
+
+
+def parse_timeband_with_rooms(html: str) -> list[dict]:
+    """
+    時間帯別HTML → [{court, date, start, end, status}]
+    court = tbody各行の td.shisetsu(部屋/コート名)。1施設に複数コートがある場合、
+    コートごとに1セル=1行で返す(全面/半面東/多目的広場 等を区別)。
+    """
+    soup = BeautifulSoup(html, "lxml")
+    out: list[dict] = []
+    for table in soup.select("table.calendar"):
+        thead = table.find("thead")
+        if not thead:
+            continue
+        ths = thead.find_all("th")
+        if not ths:
+            continue
+        dm = JP_DATE_RE.search(ths[0].get_text(" ", strip=True))
+        if not dm:
+            continue
+        date = f"{dm.group(1)}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}"
+        band_cols: list[tuple[int, str, str]] = []
+        for idx, th in enumerate(ths):
+            tm = TIME_RANGE_RE.search(th.get_text(" ", strip=True))
+            if tm:
+                band_cols.append((idx, _hhmm(tm.group(1), tm.group(2)),
+                                  _hhmm(tm.group(3), tm.group(4))))
+        if not band_cols:
+            continue
+        for tr in table.select("tbody tr"):
+            tds = tr.find_all("td")
+            if not tds:
+                continue
+            court_cell = tr.find("td", class_="shisetsu")
+            court = court_cell.get_text(strip=True) if court_cell else ""
+            if not court:
+                continue
+            for (idx, s, e) in band_cols:
+                if idx < len(tds):
+                    label = tds[idx].find("label")
+                    raw = label.get_text(strip=True) if label else tds[idx].get_text(strip=True)
+                    out.append({"court": court, "date": date, "start": s, "end": e,
+                                "status": normalize_status(raw)})
+    return out
+
+
+def aggregate_rooms(cells: dict) -> list[dict]:
+    """
+    cells: dict[(court,date,start,end)] = status(normalized)
+    → DB行 [{court_name, target_date, start_time, end_time, status, available_count, total_count}]
+    コートは原子単位なので total=1, available=1/0。
+    """
+    rows = []
+    for (court, date, start, end), st in cells.items():
+        status, avail = COURT_STATUS_TO_AVAIL.get(st, ("不明", 0))
+        rows.append({
+            "court_name": court, "target_date": date,
+            "start_time": start, "end_time": end,
+            "status": status, "available_count": avail, "total_count": 1,
+        })
+    return rows
+
+
+# --------------------------------------------------------------------
 # Playwright
 # --------------------------------------------------------------------
 def goto_kuki(page, base_url: str) -> None:
@@ -421,6 +492,124 @@ def fetch_timeband_html(page, cfg: CityConfig, ext_id: str, name: str, type_valu
     return html
 
 
+def _collect_checkdates(page) -> list[dict]:
+    return page.evaluate("""
+        () => Array.from(document.querySelectorAll("input[name='checkdate']"))
+            .map(c => ({ id: c.id, value: c.value }))
+    """)
+
+
+def _on_calendar(page) -> bool:
+    """施設別空き状況(カレンダー)画面にいるか"""
+    try:
+        return page.locator("input[name='checkdate']").count() > 0
+    except Exception:
+        return False
+
+
+def _back_to_calendar(page) -> bool:
+    """時間帯別画面から「前に戻る」でカレンダーへ高速復帰 (フル再到達 ~15s → ~3s)"""
+    try:
+        page.evaluate("() => __doPostBack('back', '')")
+        page.wait_for_selector("input[name='checkdate']", timeout=10000, state="attached")
+        page.wait_for_timeout(400)
+        return True
+    except Exception:
+        return False
+
+
+def _clear_checked(page) -> None:
+    """チェック残りをクリア (前パスの選択が残ると次パスに混入するため)"""
+    try:
+        page.evaluate("""
+            () => document.querySelectorAll("input[name='checkdate']:checked")
+                .forEach(c => c.click())
+        """)
+        page.wait_for_timeout(200)
+    except Exception:
+        pass
+
+
+def fetch_timeband_rooms(page, cfg: CityConfig, ext_id: str, name: str, type_value: str) -> dict:
+    """
+    1施設の全コート(部屋)の時間帯別空き状況を取得。
+
+    webRは一度に約20枠しか選択できないため、checkdate を room_part(値の11-13桁目)
+    ごとに分けて選択し、部屋ごとに calendar→時間帯別 を辿る。
+    ハードニング:
+      - 復帰は「前に戻る」優先 (フル再到達は最後の手段)
+      - 遷移判定は URL (WgR_Jikantaibetsu) 12秒。来ない部屋(多目的広場等の
+        別予約モデル)はデッドパスとして高速スキップし再試行しない
+      - 取りこぼした部屋(遷移成功だが新規セル0)は1回だけリトライ
+      - 取得コート数がカレンダーの部屋数に達したら early-exit (体育館は通常1パス)
+    returns: dict[(court,date,start,end)] = status(normalized)  ※重複は後勝ちで統合
+    """
+    cells: dict = {}
+
+    fetch_facility_calendar(page, cfg, ext_id, name, type_value)
+    cds = _collect_checkdates(page)
+    if not cds:
+        raise RuntimeError("checkdate が見つからない")
+    room_parts = sorted({c["value"][11:13] for c in cds})
+    # カレンダー画面の部屋数 (early-exit 判定用)
+    try:
+        total_rooms = page.evaluate("() => document.querySelectorAll('td.shisetsu').length")
+    except Exception:
+        total_rooms = 0
+
+    dead: set[str] = set()      # 時間帯別を返さない部屋 (再試行しない)
+    pending = list(room_parts)
+
+    for attempt in range(2):    # 取りこぼしリトライ最大1回
+        failed: list[str] = []
+        for rr in pending:
+            # カレンダーへ復帰: back優先 → 失敗時のみフル再到達
+            if not _on_calendar(page):
+                if not _back_to_calendar(page):
+                    fetch_facility_calendar(page, cfg, ext_id, name, type_value)
+            _clear_checked(page)
+            cds = _collect_checkdates(page)
+            ids = [c["id"] for c in cds if c["value"][11:13] == rr][:20]
+            if not ids:
+                continue
+            n_checked = 0
+            for cid in ids:
+                try:
+                    page.locator(f"#{cid}").check(force=True)
+                    n_checked += 1
+                except Exception:
+                    pass
+            if n_checked == 0:
+                failed.append(rr)
+                continue
+            page.wait_for_timeout(300)
+            before = len(cells)
+            page.evaluate("() => __doPostBack('next', '')")
+            try:
+                page.wait_for_url("**/WgR_Jikantaibetsu**", timeout=12000)
+                page.wait_for_timeout(800)
+            except Exception:
+                # 時間帯別に来ない部屋 (多目的広場/会議室等の別予約モデル)
+                console.print(f"    [dim]room {rr}: 時間帯別なし → skip[/dim]")
+                dead.add(rr)
+                _clear_checked(page)
+                continue
+            for cell in parse_timeband_with_rooms(page.content()):
+                cells[(cell["court"], cell["date"], cell["start"], cell["end"])] = cell["status"]
+            gained = len(cells) - before
+            if gained == 0:
+                failed.append(rr)
+            # early-exit: 全部屋分のコートを取得済みなら残りパスは不要
+            n_courts = len({k[0] for k in cells})
+            if total_rooms and n_courts >= total_rooms:
+                return cells
+        pending = [rr for rr in failed if rr not in dead]
+        if not pending:
+            break
+        console.print(f"    [yellow]取りこぼしリトライ: {pending}[/yellow]")
+    return cells
+
+
 # --------------------------------------------------------------------
 # メイン
 # --------------------------------------------------------------------
@@ -437,7 +626,7 @@ def build_arg_parser():
 
 def run_scrape(cfg: CityConfig, args) -> int:
     if getattr(args, "timeband", False):
-        return run_scrape_timeband(cfg, args)
+        return run_scrape_rooms(cfg, args)
     console.print(f"[bold green]webR スクレイプ: {cfg.name} ({cfg.external_system})[/bold green]\n")
     if not SUPABASE_URL or not SUPABASE_KEY:
         console.print("[red]ERROR: SUPABASE 認証情報 未設定[/red]")
@@ -487,7 +676,8 @@ def run_scrape(cfg: CityConfig, args) -> int:
                     pc, ps = [], []
                     for d in daily:
                         common = {
-                            "facility_id": fac["id"], "target_date": d["target_date"],
+                            "facility_id": fac["id"], "court_name": "",
+                            "target_date": d["target_date"],
                             "start_time": cfg.open_time, "end_time": cfg.close_time,
                             "availability_status": d["status"],
                             "available_court_count": d["available_count"],
@@ -496,7 +686,7 @@ def run_scrape(cfg: CityConfig, args) -> int:
                         pc.append({**common, "last_checked_at": now})
                         ps.append({**common, "snapshot_at": now})
                     supa_upsert("availability_current", pc,
-                                on_conflict="facility_id,target_date,start_time,end_time")
+                                on_conflict="facility_id,court_name,target_date,start_time,end_time")
                     supa_insert("availability_snapshots", ps)
                     console.print(f"  [green]→ DB: {len(pc)}行 投入[/green]")
                 summary.append((code, name, len(daily), n_open, "OK"))
@@ -588,7 +778,8 @@ def run_scrape_timeband(cfg: CityConfig, args) -> int:
                     pc, ps = [], []
                     for r in rows:
                         common = {
-                            "facility_id": fac["id"], "target_date": r["target_date"],
+                            "facility_id": fac["id"], "court_name": "",
+                            "target_date": r["target_date"],
                             "start_time": r["start_time"], "end_time": r["end_time"],
                             "availability_status": r["status"],
                             "available_court_count": r["available_count"],
@@ -597,7 +788,7 @@ def run_scrape_timeband(cfg: CityConfig, args) -> int:
                         pc.append({**common, "last_checked_at": now})
                         ps.append({**common, "snapshot_at": now})
                     supa_upsert("availability_current", pc,
-                                on_conflict="facility_id,target_date,start_time,end_time")
+                                on_conflict="facility_id,court_name,target_date,start_time,end_time")
                     supa_insert("availability_snapshots", ps)
                     console.print(f"  [green]→ DB: {len(pc)}行 投入 (旧1日枠は削除済)[/green]")
                 summary.append((code, name, n_bands, n_open, "OK"))
@@ -610,6 +801,100 @@ def run_scrape_timeband(cfg: CityConfig, args) -> int:
         browser.close()
 
     console.print("\n[bold]=== 実行サマリ (時間帯別) ===[/bold]")
+    tbl = Table()
+    tbl.add_column("code"); tbl.add_column("施設名")
+    tbl.add_column("行数", justify="right"); tbl.add_column("空き枠", justify="right")
+    tbl.add_column("結果")
+    for code, name, n_rows, n_open, status in summary:
+        style = "green" if status == "OK" else "red"
+        tbl.add_row(code, name[:20], str(n_rows), str(n_open), f"[{style}]{status}[/{style}]")
+    console.print(tbl)
+    n_ok = sum(1 for r in summary if r[4] == "OK")
+    console.print(f"\n[bold]成功 {n_ok}/{len(summary)}[/bold]")
+    return 0 if n_ok > 0 else 1
+
+
+def run_scrape_rooms(cfg: CityConfig, args) -> int:
+    """コート(部屋)別モード: 1施設内の設備ごと(人工芝全面/半面/多目的広場 等)に
+    時間帯別空き状況を取得し、court_name 付きで投入する。
+
+    --timeband フラグからディスパッチされる(従来の集約版 run_scrape_timeband を置換)。
+    投入前に当該施設の既存 availability_current 行を全削除し、コート別行に置換する。
+    """
+    console.print(f"[bold green]webR コート別スクレイプ: {cfg.name} ({cfg.external_system})[/bold green]\n")
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        console.print("[red]ERROR: SUPABASE 認証情報 未設定[/red]")
+        return 1
+
+    facilities = supa_get("facilities", {
+        "external_system": f"eq.{cfg.external_system}",
+        "external_facility_id": "not.is.null",
+        "select": "id,facility_code,facility_name,external_facility_id",
+        "order": "external_facility_id",
+    })
+    if args.code:
+        wanted = set(c.strip() for c in args.code.split(","))
+        facilities = [f for f in facilities if f["facility_code"] in wanted]
+    if args.limit:
+        facilities = facilities[:args.limit]
+    console.print(f"[cyan]対象施設: {len(facilities)}件[/cyan]\n")
+
+    now = datetime.now(timezone.utc).isoformat()
+    summary = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(user_agent=USER_AGENT, locale="ja-JP",
+                                      viewport={"width": 1280, "height": 900})
+        page = context.new_page()
+        page.set_default_timeout(20000)
+
+        for i, fac in enumerate(facilities, start=1):
+            ext_id = fac["external_facility_id"]
+            name = fac["facility_name"]
+            code = fac["facility_code"]
+            type_value = cfg.type_value_for(code)
+            console.print(f"[bold][{i}/{len(facilities)}] {code} {name} (webR={ext_id}, 種別={type_value})[/bold]")
+            if not type_value:
+                console.print(f"  [yellow]→ スキップ: 種別未定義 (code={code})[/yellow]")
+                summary.append((code, name, 0, 0, "SKIP"))
+                continue
+            try:
+                cells = fetch_timeband_rooms(page, cfg, ext_id, name, type_value)
+                rows = aggregate_rooms(cells)
+                courts = sorted({r["court_name"] for r in rows})
+                n_open = sum(1 for r in rows if r["status"] in ("空き", "一部空き"))
+                console.print(f"  → {len(courts)}コート / {len(rows)}行 (空き枠 {n_open}) : {courts}")
+
+                if not args.dry_run and rows:
+                    # 既存行を全削除してコート別行に置換 (旧集約行 court_name='' も除去)
+                    supa_delete("availability_current", {"facility_id": f"eq.{fac['id']}"})
+                    pc, ps = [], []
+                    for r in rows:
+                        common = {
+                            "facility_id": fac["id"], "court_name": r["court_name"],
+                            "target_date": r["target_date"],
+                            "start_time": r["start_time"], "end_time": r["end_time"],
+                            "availability_status": r["status"],
+                            "available_court_count": r["available_count"],
+                            "total_court_count": r["total_count"], "source": "scrape",
+                        }
+                        pc.append({**common, "last_checked_at": now})
+                        ps.append({**common, "snapshot_at": now})
+                    supa_upsert("availability_current", pc,
+                                on_conflict="facility_id,court_name,target_date,start_time,end_time")
+                    supa_insert("availability_snapshots", ps)
+                    console.print(f"  [green]→ DB: {len(pc)}行 投入 ({len(courts)}コート)[/green]")
+                summary.append((code, name, len(rows), n_open, "OK"))
+            except Exception as e:
+                console.print(f"  [red]→ 失敗: {e}[/red]")
+                summary.append((code, name, 0, 0, f"NG: {str(e)[:40]}"))
+            if i < len(facilities):
+                time.sleep(INTERVAL)
+
+        browser.close()
+
+    console.print("\n[bold]=== 実行サマリ (コート別) ===[/bold]")
     tbl = Table()
     tbl.add_column("code"); tbl.add_column("施設名")
     tbl.add_column("行数", justify="right"); tbl.add_column("空き枠", justify="right")

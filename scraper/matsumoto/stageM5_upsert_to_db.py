@@ -305,7 +305,7 @@ def main() -> int:
     # ----------------------------------------------------------------
     console.print(f"\n[cyan]Step 5: Supabase 書き込み[/cyan]")
     supa_upsert("availability_current", payloads_current,
-                on_conflict="facility_id,target_date,start_time,end_time")
+                on_conflict="facility_id,court_name,target_date,start_time,end_time")
     console.print(f"  [green][OK] availability_current: {len(payloads_current)} rows upserted[/green]")
 
     supa_insert("availability_snapshots", payloads_snapshot)

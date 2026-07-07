@@ -356,6 +356,7 @@ def main() -> int:
                     # 共通フィールド (両テーブル共通)
                     common = {
                         "facility_id": facility_uuid,
+                        "court_name": "",
                         "target_date": a.target_date,
                         "start_time": a.start_time,
                         "end_time": a.end_time,
@@ -374,7 +375,7 @@ def main() -> int:
                 console.print(f"\n[cyan]Supabase に書き込み中 ({len(payloads_current)}行)...[/cyan]")
                 supa_upsert(
                     "availability_current", payloads_current,
-                    on_conflict="facility_id,target_date,start_time,end_time",
+                    on_conflict="facility_id,court_name,target_date,start_time,end_time",
                 )
                 supa_insert("availability_snapshots", payloads_snapshot)
                 console.print(f"[green]✓ 書き込み完了[/green]")

@@ -359,6 +359,7 @@ def main() -> int:
                     for d in daily:
                         common = {
                             "facility_id": fac["id"],
+                            "court_name": "",
                             "target_date": d["target_date"],
                             "start_time": DEFAULT_OPEN, "end_time": DEFAULT_CLOSE,
                             "availability_status": d["status"],
@@ -369,7 +370,7 @@ def main() -> int:
                         payloads_current.append({**common, "last_checked_at": now})
                         payloads_snapshot.append({**common, "snapshot_at": now})
                     supa_upsert("availability_current", payloads_current,
-                                on_conflict="facility_id,target_date,start_time,end_time")
+                                on_conflict="facility_id,court_name,target_date,start_time,end_time")
                     supa_insert("availability_snapshots", payloads_snapshot)
                     console.print(f"  [green]→ DB: {len(payloads_current)}行 投入[/green]")
 

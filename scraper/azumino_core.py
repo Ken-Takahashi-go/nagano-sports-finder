@@ -305,7 +305,7 @@ def run_scrape(args) -> int:
         for dt, st in cal.items():
             avail = 1 if st in ("空き", "一部空き") else 0
             common = {
-                "facility_id": fac["id"], "target_date": dt,
+                "facility_id": fac["id"], "court_name": "", "target_date": dt,
                 "start_time": DEFAULT_OPEN, "end_time": DEFAULT_CLOSE,
                 "availability_status": st, "available_court_count": avail,
                 "total_court_count": 1, "source": "scrape",
@@ -318,7 +318,7 @@ def run_scrape(args) -> int:
         console.print(f"  [yellow]未照合: {unmatched[:8]}[/yellow]")
     if not args.dry_run and pc:
         supa_upsert("availability_current", pc,
-                    on_conflict="facility_id,target_date,start_time,end_time")
+                    on_conflict="facility_id,court_name,target_date,start_time,end_time")
         supa_insert("availability_snapshots", ps)
         console.print(f"  [green]→ DB投入: {len(pc)}行[/green]")
     elif args.dry_run:
