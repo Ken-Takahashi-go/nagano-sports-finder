@@ -499,14 +499,51 @@ def _collect_checkdates(page) -> list[dict]:
     """)
 
 
+def _on_calendar(page) -> bool:
+    """施設別空き状況(カレンダー)画面にいるか"""
+    try:
+        return page.locator("input[name='checkdate']").count() > 0
+    except Exception:
+        return False
+
+
+def _back_to_calendar(page) -> bool:
+    """時間帯別画面から「前に戻る」でカレンダーへ高速復帰 (フル再到達 ~15s → ~3s)"""
+    try:
+        page.evaluate("() => __doPostBack('back', '')")
+        page.wait_for_selector("input[name='checkdate']", timeout=10000, state="attached")
+        page.wait_for_timeout(400)
+        return True
+    except Exception:
+        return False
+
+
+def _clear_checked(page) -> None:
+    """チェック残りをクリア (前パスの選択が残ると次パスに混入するため)"""
+    try:
+        page.evaluate("""
+            () => document.querySelectorAll("input[name='checkdate']:checked")
+                .forEach(c => c.click())
+        """)
+        page.wait_for_timeout(200)
+    except Exception:
+        pass
+
+
 def fetch_timeband_rooms(page, cfg: CityConfig, ext_id: str, name: str, type_value: str) -> dict:
     """
     1施設の全コート(部屋)の時間帯別空き状況を取得。
+
     webRは一度に約20枠しか選択できないため、checkdate を room_part(値の11-13桁目)
     ごとに分けて選択し、部屋ごとに calendar→時間帯別 を辿る。
+    ハードニング:
+      - 復帰は「前に戻る」優先 (フル再到達は最後の手段)
+      - 遷移判定は URL (WgR_Jikantaibetsu) 12秒。来ない部屋(多目的広場等の
+        別予約モデル)はデッドパスとして高速スキップし再試行しない
+      - 取りこぼした部屋(遷移成功だが新規セル0)は1回だけリトライ
+      - 取得コート数がカレンダーの部屋数に達したら early-exit (体育館は通常1パス)
     returns: dict[(court,date,start,end)] = status(normalized)  ※重複は後勝ちで統合
     """
-    from collections import defaultdict
     cells: dict = {}
 
     fetch_facility_calendar(page, cfg, ext_id, name, type_value)
@@ -514,32 +551,62 @@ def fetch_timeband_rooms(page, cfg: CityConfig, ext_id: str, name: str, type_val
     if not cds:
         raise RuntimeError("checkdate が見つからない")
     room_parts = sorted({c["value"][11:13] for c in cds})
+    # カレンダー画面の部屋数 (early-exit 判定用)
+    try:
+        total_rooms = page.evaluate("() => document.querySelectorAll('td.shisetsu').length")
+    except Exception:
+        total_rooms = 0
 
-    for i, rr in enumerate(room_parts):
-        if i > 0:
-            # 前パスで時間帯別へ遷移済みのため calendar に再到達し id を取り直す
-            fetch_facility_calendar(page, cfg, ext_id, name, type_value)
+    dead: set[str] = set()      # 時間帯別を返さない部屋 (再試行しない)
+    pending = list(room_parts)
+
+    for attempt in range(2):    # 取りこぼしリトライ最大1回
+        failed: list[str] = []
+        for rr in pending:
+            # カレンダーへ復帰: back優先 → 失敗時のみフル再到達
+            if not _on_calendar(page):
+                if not _back_to_calendar(page):
+                    fetch_facility_calendar(page, cfg, ext_id, name, type_value)
+            _clear_checked(page)
             cds = _collect_checkdates(page)
-        ids = [c["id"] for c in cds if c["value"][11:13] == rr][:20]
-        if not ids:
-            continue
-        for cid in ids:
+            ids = [c["id"] for c in cds if c["value"][11:13] == rr][:20]
+            if not ids:
+                continue
+            n_checked = 0
+            for cid in ids:
+                try:
+                    page.locator(f"#{cid}").check(force=True)
+                    n_checked += 1
+                except Exception:
+                    pass
+            if n_checked == 0:
+                failed.append(rr)
+                continue
+            page.wait_for_timeout(300)
+            before = len(cells)
+            page.evaluate("() => __doPostBack('next', '')")
             try:
-                page.locator(f"#{cid}").check(force=True)
+                page.wait_for_url("**/WgR_Jikantaibetsu**", timeout=12000)
+                page.wait_for_timeout(800)
             except Exception:
-                pass
-        page.wait_for_timeout(400)
-        page.evaluate("() => __doPostBack('next', '')")
-        try:
-            page.wait_for_load_state("networkidle", timeout=30000)
-        except Exception:
-            pass
-        page.wait_for_timeout(1200)
-        html = page.content()
-        if "JikantaibetsuAkiJoukyou" not in html and "時間帯別" not in html:
-            continue
-        for cell in parse_timeband_with_rooms(html):
-            cells[(cell["court"], cell["date"], cell["start"], cell["end"])] = cell["status"]
+                # 時間帯別に来ない部屋 (多目的広場/会議室等の別予約モデル)
+                console.print(f"    [dim]room {rr}: 時間帯別なし → skip[/dim]")
+                dead.add(rr)
+                _clear_checked(page)
+                continue
+            for cell in parse_timeband_with_rooms(page.content()):
+                cells[(cell["court"], cell["date"], cell["start"], cell["end"])] = cell["status"]
+            gained = len(cells) - before
+            if gained == 0:
+                failed.append(rr)
+            # early-exit: 全部屋分のコートを取得済みなら残りパスは不要
+            n_courts = len({k[0] for k in cells})
+            if total_rooms and n_courts >= total_rooms:
+                return cells
+        pending = [rr for rr in failed if rr not in dead]
+        if not pending:
+            break
+        console.print(f"    [yellow]取りこぼしリトライ: {pending}[/yellow]")
     return cells
 
 

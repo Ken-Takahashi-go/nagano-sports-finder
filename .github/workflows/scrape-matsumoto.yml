@@ -21,7 +21,7 @@ on:
 jobs:
   scrape-matsumoto:
     runs-on: ubuntu-latest
-    timeout-minutes: 40  # webR5市計約54施設(時間帯別)。Playwright install 含め余裕を持って40分
+    timeout-minutes: 60  # webR5市計約54施設(コート別=部屋ごと遷移)。単純施設~15s/複合~50s + Playwright install。余裕を持って60分
 
     steps:
       - name: Checkout code
