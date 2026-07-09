@@ -81,6 +81,31 @@ export default function RootLayout({
 
         <footer className="bg-gray-100 border-t border-gray-200 mt-12">
           <div className="container mx-auto px-4 py-6 max-w-6xl text-sm text-gray-600">
+            {/* エリア別リンク (内部リンク: 全ページ→主要エリアランディング) */}
+            <p className="mb-2">
+              <strong>エリアから探す</strong>:
+            </p>
+            <ul className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              {[
+                { href: '/area/matsumoto/tennis', label: '松本市のテニスコート' },
+                { href: '/area/nagano/tennis', label: '長野市のテニスコート' },
+                { href: '/area/matsumoto/futsal', label: '松本市のフットサル' },
+                { href: '/area/matsumoto/soccer', label: '松本市のサッカー場' },
+                { href: '/area/nagano/soccer', label: '長野市のサッカー場' },
+                { href: '/area/ueda/tennis', label: '上田市のテニスコート' },
+                { href: '/area/shiojiri/tennis', label: '塩尻市のテニスコート' },
+                { href: '/area/suwa/tennis', label: '諏訪市のテニスコート' },
+                { href: '/area/okaya/tennis', label: '岡谷市のテニスコート' },
+                { href: '/area/azumino/soccer', label: '安曇野市のサッカー場' },
+                { href: '/area', label: 'エリア別一覧 →' },
+              ].map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="text-brand-700 hover:underline">
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
             <p className="mb-2">
               <strong>データ提供元</strong>:
             </p>

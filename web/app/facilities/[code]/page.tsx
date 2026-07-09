@@ -9,7 +9,12 @@ import {
   getFacilityNameLookup,
 } from '@/lib/queries';
 import { extractFacilityCodes, renderNotesWithLinks } from '@/lib/notes';
-import { SPORT_LABEL, type FacilityWithSports } from '@/lib/types';
+import {
+  LANDING_SPORTS,
+  MUNICIPALITY_SLUGS,
+  SPORT_FACILITY_NOUN,
+} from '@/lib/areas';
+import { SPORT_LABEL, type FacilityWithSports, type SportType } from '@/lib/types';
 
 export const revalidate = 60;
 
@@ -85,11 +90,24 @@ export default async function FacilityDetailPage({
       {/* JSON-LD 構造化データ (Google検索リッチリザルト用) */}
       <StructuredData facility={f} />
 
-      {/* パンくず */}
+      {/* パンくず (市ハブ経由で内部リンクを形成) */}
       <nav className="text-sm text-gray-500 mb-4" aria-label="パンくず">
         <Link href="/" className="hover:underline">TOP</Link>
         <span className="mx-2">›</span>
-        <Link href="/search" className="hover:underline">施設検索</Link>
+        {MUNICIPALITY_SLUGS[f.municipality] ? (
+          <>
+            <Link href="/area" className="hover:underline">エリア別</Link>
+            <span className="mx-2">›</span>
+            <Link
+              href={`/area/${MUNICIPALITY_SLUGS[f.municipality]}`}
+              className="hover:underline"
+            >
+              {f.municipality}
+            </Link>
+          </>
+        ) : (
+          <Link href="/search" className="hover:underline">施設検索</Link>
+        )}
         <span className="mx-2">›</span>
         <span className="text-gray-700">{f.facility_name}</span>
       </nav>
@@ -233,6 +251,9 @@ export default async function FacilityDetailPage({
         </div>
       </section>
 
+      {/* 関連エリアページ (内部リンク: 施設→エリアの戻り導線) */}
+      <RelatedAreaLinks facility={f} />
+
       {/* データ鮮度 */}
       <p className="text-xs text-gray-500 text-center">
         最終確認日: {lastVerified} ｜ データ信頼度: {f.data_confidence}
@@ -240,6 +261,47 @@ export default async function FacilityDetailPage({
         最新の利用条件は公式サイトでご確認ください
       </p>
     </div>
+  );
+}
+
+/**
+ * 関連エリアページへのリンク (施設ページ→エリアランディングの内部リンク)。
+ * この施設が属する (市町村×競技) のエリアページは必ず存在する
+ * (施設自身が1件以上該当するため 404 にならない)。
+ */
+function RelatedAreaLinks({ facility: f }: { facility: FacilityWithSports }) {
+  const slug = MUNICIPALITY_SLUGS[f.municipality];
+  if (!slug) return null;
+  const landingSports = f.sports.filter((s): s is SportType =>
+    (LANDING_SPORTS as readonly SportType[]).includes(s),
+  );
+  return (
+    <section className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+      <h2 className="text-lg font-bold mb-3 text-gray-900">関連ページ</h2>
+      <div className="flex flex-wrap gap-2 text-sm">
+        {landingSports.map((s) => (
+          <Link
+            key={s}
+            href={`/area/${slug}/${s}`}
+            className="bg-white border border-gray-300 hover:border-brand-400 hover:bg-brand-50 rounded-lg px-4 py-2 transition"
+          >
+            {f.municipality}の{SPORT_FACILITY_NOUN[s]}一覧・空き状況 →
+          </Link>
+        ))}
+        <Link
+          href={`/area/${slug}`}
+          className="bg-white border border-gray-300 hover:border-brand-400 hover:bg-brand-50 rounded-lg px-4 py-2 transition"
+        >
+          {f.municipality}の公共スポーツ施設 →
+        </Link>
+        <Link
+          href="/area"
+          className="bg-white border border-gray-300 hover:border-brand-400 hover:bg-brand-50 rounded-lg px-4 py-2 transition"
+        >
+          エリア別一覧 →
+        </Link>
+      </div>
+    </section>
   );
 }
 
